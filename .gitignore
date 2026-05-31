@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+command.json
+result.json
+state.txt
+heartbeat.txt

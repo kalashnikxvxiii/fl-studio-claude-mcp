@@ -1,0 +1,186 @@
+# name=FLClaudeMCP
+# FL Studio MIDI Controller script — executor for the Claude MCP bridge.
+#
+# How it works: the MCP server (on Linux) writes a command to command.json and sends
+# ONE MIDI note to the virtual MIDI port this controller is bound to. That fires
+# OnMidiMsg(), from which the FULL FL controller API is available. We read the command,
+# dispatch it, and write result.json. The MCP server polls result.json for the result.
+#
+# OnMidiMsg fires several times per note, so each command carries a monotonic `id` and
+# we execute it only when the id is new.
+
+import json
+
+import general
+import transport
+import mixer
+import channels
+import patterns
+import ui
+import midi
+
+# Folder of THIS script (Wine path). command.json / result.json live here.
+# Keep in sync with the MCP server's resolved Linux path to the same folder.
+_DIR = r"C:\users\kalashnikxv\Documents\Image-Line\FL Studio\Settings\Hardware\FLClaudeMCP"
+_CMD = _DIR + r"\command.json"
+_RES = _DIR + r"\result.json"
+
+_last_id = -1
+
+
+def _read_command():
+    try:
+        with open(_CMD, "r") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _write_result(obj):
+    try:
+        with open(_RES, "w") as f:
+            json.dump(obj, f)
+    except Exception:
+        pass
+
+
+# ---- operations -----------------------------------------------------------------
+# Each op: (args_dict) -> json-serializable result. Raise on error.
+
+def op_ping(a):
+    return {
+        "version": general.getVersion(),
+        "playing": bool(transport.isPlaying()),
+        "tempo": mixer.getCurrentTempo() / 1000.0,
+    }
+
+
+def op_get_state(a):
+    tracks = []
+    for i in range(mixer.trackCount()):
+        tracks.append({
+            "index": i,
+            "name": mixer.getTrackName(i),
+            "volume": mixer.getTrackVolume(i),
+            "pan": mixer.getTrackPan(i),
+            "muted": bool(mixer.isTrackMuted(i)),
+        })
+    chans = [{"index": i, "name": channels.getChannelName(i)}
+             for i in range(channels.channelCount())]
+    return {
+        "version": general.getVersion(),
+        "tempo": mixer.getCurrentTempo() / 1000.0,
+        "playing": bool(transport.isPlaying()),
+        "recording": bool(transport.isRecording()),
+        "pattern": patterns.patternNumber(),
+        "mixer_tracks": tracks,
+        "channels": chans,
+    }
+
+
+def op_play(a):
+    if not transport.isPlaying():
+        transport.start()
+    return {"playing": True}
+
+
+def op_stop(a):
+    transport.stop()
+    return {"playing": False}
+
+
+def op_record(a):
+    transport.record()
+    return {"recording": bool(transport.isRecording())}
+
+
+def op_set_tempo(a):
+    bpm = float(a["bpm"])
+    general.processRECEvent(
+        midi.REC_Tempo, int(bpm * 1000),
+        midi.REC_Control | midi.REC_UpdateControl | midi.REC_UpdatePlugLabel)
+    return {"tempo": mixer.getCurrentTempo() / 1000.0}
+
+
+def op_mixer_set_volume(a):
+    t = int(a["track"]); v = float(a["volume"])
+    mixer.setTrackVolume(t, v)
+    return {"track": t, "volume": mixer.getTrackVolume(t)}
+
+
+def op_mixer_set_pan(a):
+    t = int(a["track"]); p = float(a["pan"])
+    mixer.setTrackPan(t, p)
+    return {"track": t, "pan": mixer.getTrackPan(t)}
+
+
+def op_mixer_mute(a):
+    t = int(a["track"])
+    mixer.muteTrack(t)
+    return {"track": t, "muted": bool(mixer.isTrackMuted(t))}
+
+
+def op_mixer_solo(a):
+    t = int(a["track"])
+    mixer.soloTrack(t)
+    return {"track": t}
+
+
+def op_channel_select(a):
+    i = int(a["index"])
+    channels.selectOneChannel(i)
+    return {"selected": i, "name": channels.getChannelName(i)}
+
+
+OPS = {
+    "ping": op_ping,
+    "get_state": op_get_state,
+    "play": op_play,
+    "stop": op_stop,
+    "record": op_record,
+    "set_tempo": op_set_tempo,
+    "mixer_set_volume": op_mixer_set_volume,
+    "mixer_set_pan": op_mixer_set_pan,
+    "mixer_mute": op_mixer_mute,
+    "mixer_solo": op_mixer_solo,
+    "channel_select": op_channel_select,
+}
+
+
+def _dispatch(cmd):
+    cid = cmd.get("id")
+    op = cmd.get("op")
+    args = cmd.get("args") or {}
+    fn = OPS.get(op)
+    if fn is None:
+        return {"id": cid, "ok": False, "error": "unknown op: %s" % op}
+    try:
+        return {"id": cid, "ok": True, "result": fn(args)}
+    except Exception as e:
+        return {"id": cid, "ok": False, "error": "%s: %s" % (type(e).__name__, e)}
+
+
+def _maybe_execute():
+    global _last_id
+    cmd = _read_command()
+    if not cmd:
+        return
+    cid = cmd.get("id")
+    if cid is None or cid == _last_id:
+        return
+    _last_id = cid
+    _write_result(_dispatch(cmd))
+
+
+def OnInit():
+    print("FLClaudeMCP ready (FL %s)" % general.getVersion())
+
+
+def OnMidiMsg(event):
+    event.handled = True
+    _maybe_execute()
+
+
+def OnMidiIn(event):
+    # some inputs arrive here; treat as trigger too (idempotent via id)
+    _maybe_execute()
