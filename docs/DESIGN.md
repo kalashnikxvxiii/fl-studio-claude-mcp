@@ -64,3 +64,9 @@ Claude Code  ⇄  MCP server (Python, Linux)
   manually from the Piano Roll menu. That sandbox can only write to FL's
   "Piano roll scripts" folder, so `notes_export.json` lands there (not the Hardware
   folder); the MCP server reads it from there.
+- Probed (2026-06-01): the controller API has NO piano-roll note-writing functions
+  (only real-time `channels.midiNoteOn`). Writing notes uses an `Import Notes`
+  piano-roll script (launched manually), symmetric to Export Notes. `fl_write_notes`
+  pre-selects channel/pattern via the controller, but the script launch stays manual.
+  flpianoroll write primitives confirmed: `flp.Note()`, `score.addNote()`,
+  `score.clearNotes()`, `score.getNote()/noteCount`; velocity is 0..1.

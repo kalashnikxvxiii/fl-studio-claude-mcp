@@ -32,3 +32,27 @@ def readable_project(raw):
             c["steps"].append(s)
         out["channels"].append(c)
     return out
+
+
+def beats_to_ticks(beats, ppq):
+    """Beats (quarter notes) -> integer ticks at the given PPQ."""
+    return int(round(beats * ppq))
+
+
+def build_import_payload(notes, mode="replace"):
+    """Validate/normalize note dicts into the notes_import.json payload.
+
+    Each note: pitch (int), start_beat (float), length_beats (float),
+    velocity (0..127, default 100). Unknown mode -> 'replace'.
+    """
+    if mode not in ("replace", "merge"):
+        mode = "replace"
+    norm = []
+    for n in notes:
+        norm.append({
+            "pitch": int(n["pitch"]),
+            "start_beat": float(n["start_beat"]),
+            "length_beats": float(n["length_beats"]),
+            "velocity": int(n.get("velocity", 100)),
+        })
+    return {"mode": mode, "notes": norm}

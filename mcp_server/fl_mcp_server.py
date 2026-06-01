@@ -18,9 +18,11 @@ import getpass
 from mcp.server.fastmcp import FastMCP
 
 try:
-    from .format import readable_project, pitch_name, ticks_to_beats
+    from .format import (readable_project, pitch_name, ticks_to_beats,
+                         build_import_payload)
 except ImportError:                # when run as a plain script, not a package
-    from format import readable_project, pitch_name, ticks_to_beats
+    from format import (readable_project, pitch_name, ticks_to_beats,
+                        build_import_payload)
 
 USER = getpass.getuser()
 DEFAULT_DIR = os.path.expanduser(
@@ -39,6 +41,7 @@ NOTES_DIR = os.environ.get(
                  "Piano roll scripts"),
 )
 NOTES_PATH = os.path.join(NOTES_DIR, "notes_export.json")
+NOTES_IMPORT_PATH = os.path.join(NOTES_DIR, "notes_import.json")
 
 _next_id = int(time.time())  # unlikely to collide with a stale result file
 
@@ -133,6 +136,43 @@ def fl_read_notes() -> dict:
             "velocity": n.get("velocity"),
         })
     return {"ok": True, "ppq": ppq, "note_count": len(notes), "notes": notes}
+
+
+@mcp.tool()
+def fl_write_notes(notes: list, mode: str = "replace",
+                   channel: int = None, pattern: int = None) -> dict:
+    """Compose notes into an FL piano-roll clip. `notes` is a list of dicts with
+    pitch (MIDI, 60=C5), start_beat, length_beats, velocity (0-127). mode='replace'
+    rewrites the clip; mode='merge' adds, skipping exact duplicates.
+
+    Hybrid: if `pattern`/`channel` are given, the controller pre-selects them so the
+    user opens the right clip. The user must then open that clip's Piano Roll and run
+    'Import Notes' (menu > Tools > Scripting). Returns the instruction to do so."""
+    selected = {}
+    if pattern is not None:
+        selected["pattern"] = _send("pattern_select", {"index": int(pattern)})
+    if channel is not None:
+        selected["channel"] = _send("channel_select", {"index": int(channel)})
+
+    payload = build_import_payload(notes, mode)
+    try:
+        with open(NOTES_IMPORT_PATH, "w") as f:
+            json.dump(payload, f)
+    except OSError as e:
+        return {"ok": False, "error": "could not write notes_import.json: %s" % e}
+
+    where = ""
+    if "channel" in selected:
+        cinfo = selected["channel"].get("result", selected["channel"])
+        where = " on channel %s '%s'" % (cinfo.get("selected"), cinfo.get("name"))
+    return {
+        "ok": True,
+        "wrote": len(payload["notes"]),
+        "mode": payload["mode"],
+        "selected": selected,
+        "instruction": ("Open the target clip's Piano Roll%s and run "
+                        "menu > Tools > Scripting > Import Notes." % where),
+    }
 
 
 @mcp.tool()
