@@ -31,7 +31,14 @@ SHARED_DIR = os.environ.get("FL_MCP_DIR", DEFAULT_DIR)
 MIDI_DEV = os.environ.get("FL_MCP_MIDI", "/dev/snd/midiC4D0")
 CMD_PATH = os.path.join(SHARED_DIR, "command.json")
 RES_PATH = os.path.join(SHARED_DIR, "result.json")
-NOTES_PATH = os.path.join(SHARED_DIR, "notes_export.json")
+# The Export Notes piano-roll script can only write inside FL's "Piano roll scripts"
+# folder (its sandbox blocks the Hardware dir), so notes_export.json lands there.
+NOTES_DIR = os.environ.get(
+    "FL_MCP_NOTES_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(SHARED_DIR.rstrip("/"))),
+                 "Piano roll scripts"),
+)
+NOTES_PATH = os.path.join(NOTES_DIR, "notes_export.json")
 
 _next_id = int(time.time())  # unlikely to collide with a stale result file
 
