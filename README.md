@@ -51,6 +51,7 @@ Then, in Claude: *"run fl_ping"* — you should get FL's version, tempo and play
 | `fl_ping` | version + tempo + play state |
 | `fl_get_project` | full project read: context + channels (steps w/ pitch+velocity) + mixer |
 | `fl_read_notes` | read notes exported by the Export Notes piano-roll script |
+| `fl_write_notes(notes, mode, channel, pattern)` | write notes into the open clip (replace/merge); pre-selects channel/pattern |
 | `fl_get_state` | deprecated alias of `fl_get_project` |
 | `fl_play` / `fl_stop` / `fl_record` | transport |
 | `fl_set_tempo(bpm)` | set tempo |
@@ -71,6 +72,16 @@ Controller scripts can't read piano-roll notes directly. To let Claude see them:
 `setup/install.sh` copies `Export Notes.pyscript` into FL's *Piano roll scripts* folder.
 The export is written there (the piano-roll sandbox can't write elsewhere); the MCP
 server reads it from that folder.
+
+### Writing piano-roll notes
+
+1. Ask Claude to compose; it calls `fl_write_notes` (optionally pre-selecting a
+   channel/pattern) and tells you what to open.
+2. Open that clip in the **Piano Roll**.
+3. Menu (hamburger) > **Tools** > **Scripting** > **Import Notes**.
+
+`mode="replace"` rewrites the clip; `mode="merge"` adds, skipping exact duplicates
+(same pitch + start). Notes are positioned in beats and converted with the clip's PPQ.
 
 ## Layout
 

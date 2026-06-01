@@ -29,7 +29,7 @@ sed "s|^_DIR = r\".*\"$|_DIR = r\"$WINE_DIR\"|" \
 echo "==> Installing Export Notes piano-roll script"
 PR_DIR="$FL_DATA/Settings/Piano roll scripts"
 mkdir -p "$PR_DIR"
-cp "$REPO/fl_device/piano_roll/Export Notes.pyscript" "$PR_DIR/"
+cp "$REPO"/fl_device/piano_roll/*.pyscript "$PR_DIR/"
 
 echo "==> Python venv + mcp SDK"
 python3 -m venv "$REPO/.venv"
