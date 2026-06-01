@@ -52,6 +52,7 @@ Then, in Claude: *"run fl_ping"* — you should get FL's version, tempo and play
 | `fl_get_project` | full project read: context + channels (steps w/ pitch+velocity) + mixer |
 | `fl_read_notes` | read notes exported by the Export Notes piano-roll script |
 | `fl_write_notes(notes, mode, channel, pattern)` | write notes into the open clip (replace/merge); pre-selects channel/pattern |
+| `fl_search_library(query, kind, plugin, limit, refresh)` | search installed instruments/effects/presets/samples by name/plugin/category |
 | `fl_get_state` | deprecated alias of `fl_get_project` |
 | `fl_play` / `fl_stop` / `fl_record` | transport |
 | `fl_set_tempo(bpm)` | set tempo |
@@ -82,6 +83,15 @@ server reads it from that folder.
 
 `mode="replace"` rewrites the clip; `mode="merge"` adds, skipping exact duplicates
 (same pitch + start). Notes are positioned in beats and converted with the clip's PPQ.
+
+### Finding sounds
+
+`fl_search_library` indexes FL's on-disk library (plugin database, ~7k instrument
+presets, factory samples) by path metadata and caches it. Ask Claude for "a reese bass"
+or "a reverb"; it searches, and when several candidates fit it proposes a short list
+with reasons rather than guessing. Loading the chosen sound into FL is still manual
+(the controller API can't load plugins). First search builds `library_index.json`;
+pass `refresh=True` after you install new content.
 
 ## Layout
 

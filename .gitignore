@@ -6,4 +6,6 @@ result.json
 state.txt
 heartbeat.txt
 notes_export.json
+notes_import.json
+library_index.json
 docs/superpowers/
