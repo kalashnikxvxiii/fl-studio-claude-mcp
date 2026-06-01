@@ -70,3 +70,7 @@ Claude Code  ⇄  MCP server (Python, Linux)
   pre-selects channel/pattern via the controller, but the script launch stays manual.
   flpianoroll write primitives confirmed: `flp.Note()`, `score.addNote()`,
   `score.clearNotes()`, `score.getNote()/noteCount`; velocity is 0..1.
+- Library is searchable from the filesystem (`fl_search_library`): plugin database,
+  `Data/Patches/Plugin presets` (~7k .fst), `Data/Patches/Packs` (~3k .wav), classified
+  by path (10808 records indexed). Loading a result into FL is still manual — the
+  controller API exposes no plugin/preset loading (future "Proton-phase" work).
