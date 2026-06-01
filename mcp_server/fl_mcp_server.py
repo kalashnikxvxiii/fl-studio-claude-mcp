@@ -142,5 +142,30 @@ def fl_channel_select(index: int) -> dict:
     return _send("channel_select", {"index": index})
 
 
+@mcp.tool()
+def fl_pattern_select(index: int) -> dict:
+    """Jump to a pattern by index."""
+    return _send("pattern_select", {"index": index})
+
+
+@mcp.tool()
+def fl_set_steps(channel: int, steps: list[int]) -> dict:
+    """Write a step-sequencer row for a channel. `steps` is a list of 0/1
+    (e.g. a 16-step kick: [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0])."""
+    return _send("set_steps", {"channel": channel, "steps": steps})
+
+
+@mcp.tool()
+def fl_clear_steps(channel: int, length: int = 16) -> dict:
+    """Clear the first `length` steps of a channel's step row."""
+    return _send("clear_steps", {"channel": channel, "length": length})
+
+
+@mcp.tool()
+def fl_get_steps(channel: int, length: int = 16) -> dict:
+    """Read the first `length` steps of a channel's step row."""
+    return _send("get_steps", {"channel": channel, "length": length})
+
+
 if __name__ == "__main__":
     mcp.run()

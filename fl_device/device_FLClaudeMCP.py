@@ -132,6 +132,38 @@ def op_channel_select(a):
     return {"selected": i, "name": channels.getChannelName(i)}
 
 
+def op_pattern_select(a):
+    n = int(a["index"])
+    patterns.jumpToPattern(n)
+    return {"pattern": patterns.patternNumber()}
+
+
+def op_set_steps(a):
+    """Write a step-sequencer row for a channel. steps = list of 0/1."""
+    ch = int(a["channel"])
+    steps = a["steps"]
+    for pos, val in enumerate(steps):
+        channels.setGridBit(ch, pos, 1 if val else 0)
+    return {"channel": ch, "channel_name": channels.getChannelName(ch),
+            "written": len(steps)}
+
+
+def op_clear_steps(a):
+    ch = int(a["channel"])
+    length = int(a.get("length", 16))
+    for pos in range(length):
+        channels.setGridBit(ch, pos, 0)
+    return {"channel": ch, "cleared": length}
+
+
+def op_get_steps(a):
+    ch = int(a["channel"])
+    length = int(a.get("length", 16))
+    bits = [int(channels.getGridBit(ch, pos)) for pos in range(length)]
+    return {"channel": ch, "channel_name": channels.getChannelName(ch),
+            "steps": bits}
+
+
 OPS = {
     "ping": op_ping,
     "get_state": op_get_state,
@@ -144,6 +176,10 @@ OPS = {
     "mixer_mute": op_mixer_mute,
     "mixer_solo": op_mixer_solo,
     "channel_select": op_channel_select,
+    "pattern_select": op_pattern_select,
+    "set_steps": op_set_steps,
+    "clear_steps": op_clear_steps,
+    "get_steps": op_get_steps,
 }
 
 
