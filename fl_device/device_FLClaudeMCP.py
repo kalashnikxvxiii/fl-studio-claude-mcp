@@ -221,8 +221,68 @@ def _channel_plugin_name(ch):
     return None
 
 
+def op_get_project(a):
+    import general
+    ctx = {
+        "version": general.getVersion(),
+        "tempo": mixer.getCurrentTempo() / 1000.0,
+        "ppq": general.getRecPPB(),
+        "playing": bool(transport.isPlaying()),
+        "recording": bool(transport.isRecording()),
+        "pattern": patterns.patternNumber(),
+        "pattern_count": patterns.patternCount(),
+        "key": None,  # controller API does not expose key/scale
+    }
+    try:
+        ctx["pattern_name"] = patterns.getPatternName(patterns.patternNumber())
+    except Exception:
+        ctx["pattern_name"] = None
+
+    chans = []
+    for ch in range(channels.channelCount()):
+        length = _channel_grid_len(ch)
+        entry = {
+            "index": ch,
+            "name": channels.getChannelName(ch),
+            "plugin": _channel_plugin_name(ch),
+            "step_count": length,
+            "steps": _channel_steps(ch, length),
+        }
+        try:
+            entry["type"] = channels.getChannelType(ch)
+        except Exception:
+            entry["type"] = None
+        chans.append(entry)
+
+    try:
+        import plugins
+    except Exception:
+        plugins = None
+    tracks = []
+    for i in range(mixer.trackCount()):
+        slots = []
+        if plugins is not None:
+            for s in range(10):
+                try:
+                    slots.append(plugins.getPluginName(i, s, 0)
+                                 if plugins.isValid(i, s) else None)
+                except Exception:
+                    slots.append(None)
+        tracks.append({
+            "index": i,
+            "name": mixer.getTrackName(i),
+            "volume": mixer.getTrackVolume(i),
+            "pan": mixer.getTrackPan(i),
+            "muted": bool(mixer.isTrackMuted(i)),
+            "plugins": [p for p in slots if p],
+        })
+
+    return {"context": ctx, "channels": chans, "mixer": tracks}
+
+
 OPS = {
     "ping": op_ping,
+    "get_project": op_get_project,
     "get_state": op_get_state,
     "play": op_play,
     "stop": op_stop,
