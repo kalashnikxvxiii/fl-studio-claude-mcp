@@ -74,3 +74,19 @@ def test_search_filters_and_ranks(tmp_path):
 def test_search_missing_root_is_skipped(tmp_path):
     index = scan_library([str(tmp_path / "nonexistent")])
     assert index == []
+
+
+from mcp_server.library import load_or_build_index
+
+
+def test_cache_build_then_load(tmp_path):
+    roots = _make_tree(tmp_path)
+    cache = str(tmp_path / "library_index.json")
+    idx1 = load_or_build_index(cache, roots, refresh=False)
+    assert os.path.exists(cache)
+    assert len(idx1) == 5
+    os.remove(tmp_path / "Data/Patches/Packs/Drums/Kicks/Kick 01.wav")
+    idx2 = load_or_build_index(cache, roots, refresh=False)
+    assert len(idx2) == 5            # served from cache
+    idx3 = load_or_build_index(cache, roots, refresh=True)
+    assert len(idx3) == 4            # rescanned

@@ -114,3 +114,21 @@ def search(index, query, kind=None, plugin=None, limit=20):
         out.append((sc, rec))
     out.sort(key=lambda t: (-t[0], t[1].get("name") or ""))
     return [r for _s, r in out[:limit]]
+
+
+def load_or_build_index(cache_path, roots, refresh=False):
+    """Return the index from cache if present (and not refresh), else scan + cache."""
+    if not refresh:
+        try:
+            with open(cache_path) as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            pass
+    index = scan_library(roots)
+    try:
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        with open(cache_path, "w") as f:
+            json.dump(index, f)
+    except OSError:
+        pass
+    return index
