@@ -17,6 +17,11 @@ import getpass
 
 from mcp.server.fastmcp import FastMCP
 
+try:
+    from .format import readable_project, pitch_name, ticks_to_beats
+except ImportError:                # when run as a plain script, not a package
+    from format import readable_project, pitch_name, ticks_to_beats
+
 USER = getpass.getuser()
 DEFAULT_DIR = os.path.expanduser(
     "~/.local/share/wineprefixes/flstudio/drive_c/users/%s/"
@@ -26,6 +31,14 @@ SHARED_DIR = os.environ.get("FL_MCP_DIR", DEFAULT_DIR)
 MIDI_DEV = os.environ.get("FL_MCP_MIDI", "/dev/snd/midiC4D0")
 CMD_PATH = os.path.join(SHARED_DIR, "command.json")
 RES_PATH = os.path.join(SHARED_DIR, "result.json")
+# The Export Notes piano-roll script can only write inside FL's "Piano roll scripts"
+# folder (its sandbox blocks the Hardware dir), so notes_export.json lands there.
+NOTES_DIR = os.environ.get(
+    "FL_MCP_NOTES_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(SHARED_DIR.rstrip("/"))),
+                 "Piano roll scripts"),
+)
+NOTES_PATH = os.path.join(NOTES_DIR, "notes_export.json")
 
 _next_id = int(time.time())  # unlikely to collide with a stale result file
 
@@ -83,9 +96,43 @@ def fl_ping() -> dict:
 
 
 @mcp.tool()
+def fl_get_project() -> dict:
+    """Read the current FL project: context (tempo/ppq/pattern; key is null —
+    ask the user), channels with per-step pitch/velocity, and mixer tracks with
+    plugin names. Use this before composing."""
+    return readable_project(_send("get_project"))
+
+
+@mcp.tool()
 def fl_get_state() -> dict:
-    """Full snapshot: version, tempo, transport, pattern, mixer tracks, channels."""
-    return _send("get_state")
+    """Deprecated alias of fl_get_project (back-compat)."""
+    return fl_get_project()
+
+
+@mcp.tool()
+def fl_read_notes() -> dict:
+    """Read piano-roll notes exported by the 'Export Notes' piano-roll script.
+    Workflow: in FL open the clip in the Piano Roll, run the script from the
+    menu (hamburger) > Scripting > Export Notes, THEN call this. Returns notes
+    with note-names and beat positions, or an instruction if no export is present."""
+    try:
+        with open(NOTES_PATH) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {"ok": False,
+                "hint": "No notes_export.json. In FL: open the clip in the Piano "
+                        "Roll, then menu > Scripting > Export Notes, then retry."}
+    ppq = data.get("ppq", 384)
+    notes = []
+    for n in data.get("notes", []):
+        notes.append({
+            "note": pitch_name(n["pitch"]),
+            "pitch": n["pitch"],
+            "beat": ticks_to_beats(n.get("start", 0), ppq),
+            "length_beats": ticks_to_beats(n.get("length", 0), ppq),
+            "velocity": n.get("velocity"),
+        })
+    return {"ok": True, "ppq": ppq, "note_count": len(notes), "notes": notes}
 
 
 @mcp.tool()

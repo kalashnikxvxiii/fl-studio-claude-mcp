@@ -56,3 +56,11 @@ Claude Code  ⇄  MCP server (Python, Linux)
   works); the controller path is for DAW control. (Future module.)
 - Requires the user to assign the controller script to a virmidi input in FL once (UI).
 - FL must be running with the controller assigned; snd-virmidi must be loaded.
+- Probed (2026-06-01): the controller API exposes per-step pitch+velocity
+  (`channels.getStepParam(step, param, offset, startPos)` on the *selected* channel;
+  `midi.pPitch=0`, `midi.pVelocity=1`), channel types, plugin names, and mixer
+  routing — but NOT key/scale (reported as `null`) and NOT piano-roll notes.
+- Reading piano-roll notes needs a piano-roll script (`flpianoroll`), launched
+  manually from the Piano Roll menu. That sandbox can only write to FL's
+  "Piano roll scripts" folder, so `notes_export.json` lands there (not the Hardware
+  folder); the MCP server reads it from there.

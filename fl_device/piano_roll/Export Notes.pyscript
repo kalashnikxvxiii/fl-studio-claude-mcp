@@ -1,0 +1,31 @@
+"""Export Notes — dumps the active Piano Roll clip's notes to notes_export.json
+so the Claude MCP bridge can read them. Run from the Piano Roll menu > Scripting."""
+import flpianoroll as flp
+import json
+
+# The piano-roll script sandbox can only write to the "Piano roll scripts" folder
+# (the Hardware/FLClaudeMCP folder is not writable from here), so the export lands
+# next to this script; the MCP server reads it from this path.
+_OUT = (r"C:\users\kalashnikxv\Documents\Image-Line\FL Studio"
+        r"\Settings\Piano roll scripts\notes_export.json")
+
+
+def export():
+    score = flp.score
+    notes = []
+    for i in range(score.noteCount):
+        n = score.getNote(i)
+        notes.append({
+            "pitch": n.number,
+            "start": int(n.time),
+            "length": int(n.length),
+            "velocity": int(round(n.velocity * 127)),
+            "ch": getattr(n, "color", 0),
+        })
+    data = {"ppq": getattr(score, "PPQ", 384),
+            "note_count": len(notes), "notes": notes}
+    with open(_OUT, "w") as f:
+        json.dump(data, f)
+
+
+export()
