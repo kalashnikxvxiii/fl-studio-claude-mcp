@@ -20,9 +20,11 @@ from mcp.server.fastmcp import FastMCP
 try:
     from .format import (readable_project, pitch_name, ticks_to_beats,
                          build_import_payload)
+    from . import library as _lib
 except ImportError:                # when run as a plain script, not a package
     from format import (readable_project, pitch_name, ticks_to_beats,
                         build_import_payload)
+    import library as _lib
 
 USER = getpass.getuser()
 DEFAULT_DIR = os.path.expanduser(
@@ -42,6 +44,19 @@ NOTES_DIR = os.environ.get(
 )
 NOTES_PATH = os.path.join(NOTES_DIR, "notes_export.json")
 NOTES_IMPORT_PATH = os.path.join(NOTES_DIR, "notes_import.json")
+
+# Library roots inside the Wine prefix (override for tests via FL_MCP_LIB_ROOTS,
+# os.pathsep-separated).
+_PROG_DATA = os.path.expanduser(
+    "~/.local/share/wineprefixes/flstudio/drive_c/Program Files/Image-Line/"
+    "FL Studio 2025/Data")
+_default_roots = os.pathsep.join([
+    os.path.join(_PROG_DATA, "System", "Plugin databases"),
+    os.path.join(_PROG_DATA, "Patches", "Plugin presets"),
+    os.path.join(_PROG_DATA, "Patches", "Packs"),
+])
+LIB_ROOTS = os.environ.get("FL_MCP_LIB_ROOTS", _default_roots).split(os.pathsep)
+LIB_CACHE = os.path.join(SHARED_DIR, "library_index.json")
 
 _next_id = int(time.time())  # unlikely to collide with a stale result file
 
@@ -173,6 +188,19 @@ def fl_write_notes(notes: list, mode: str = "replace",
         "instruction": ("Open the target clip's Piano Roll%s and run "
                         "menu > Tools > Scripting > Import Notes." % where),
     }
+
+
+@mcp.tool()
+def fl_search_library(query: str, kind: str = None, plugin: str = None,
+                      limit: int = 20, refresh: bool = False) -> dict:
+    """Search FL's installed library (instruments, effects, presets, samples) by name,
+    plugin, or category. kind filters to 'instrument'|'effect'|'preset'|'sample';
+    plugin filters to a generator (e.g. 'Sytrus'). Returns candidate records with
+    Windows-style paths. Use during composition to find/suggest sounds; loading them
+    into FL is still manual."""
+    index = _lib.load_or_build_index(LIB_CACHE, LIB_ROOTS, refresh=refresh)
+    results = _lib.search(index, query, kind=kind, plugin=plugin, limit=limit)
+    return {"ok": True, "query": query, "count": len(results), "results": results}
 
 
 @mcp.tool()
