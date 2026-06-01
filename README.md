@@ -49,13 +49,28 @@ Then, in Claude: *"run fl_ping"* — you should get FL's version, tempo and play
 | Tool | Action |
 |---|---|
 | `fl_ping` | version + tempo + play state |
-| `fl_get_state` | full snapshot (mixer tracks, channels, …) |
+| `fl_get_project` | full project read: context + channels (steps w/ pitch+velocity) + mixer |
+| `fl_read_notes` | read notes exported by the Export Notes piano-roll script |
+| `fl_get_state` | deprecated alias of `fl_get_project` |
 | `fl_play` / `fl_stop` / `fl_record` | transport |
 | `fl_set_tempo(bpm)` | set tempo |
 | `fl_mixer_set_volume(track, volume)` | mixer volume |
 | `fl_mixer_set_pan(track, pan)` | mixer pan |
 | `fl_mixer_mute(track)` / `fl_mixer_solo(track)` | mute / solo |
 | `fl_channel_select(index)` | select a channel |
+| `fl_pattern_select(index)` | jump to a pattern |
+| `fl_set_steps` / `fl_get_steps` / `fl_clear_steps` | step sequencer |
+
+### Reading piano-roll notes
+
+Controller scripts can't read piano-roll notes directly. To let Claude see them:
+1. In FL, open the clip in the **Piano Roll**.
+2. Menu (hamburger) > **Tools** > **Scripting** > **Export Notes**.
+3. Ask Claude to call `fl_read_notes`.
+
+`setup/install.sh` copies `Export Notes.pyscript` into FL's *Piano roll scripts* folder.
+The export is written there (the piano-roll sandbox can't write elsewhere); the MCP
+server reads it from that folder.
 
 ## Layout
 
