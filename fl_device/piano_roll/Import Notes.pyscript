@@ -1,0 +1,65 @@
+"""Import Notes — reads notes_import.json and writes notes into the open Piano Roll
+clip. Notes are in beats; converted to ticks via the clip's real PPQ. mode=replace
+clears first; mode=merge adds, skipping exact duplicates (same pitch & start tick).
+Run from the Piano Roll menu > Tools > Scripting."""
+import flpianoroll as flp
+import json
+
+_IN = (r"C:\users\kalashnikxv\Documents\Image-Line\FL Studio"
+       r"\Settings\Piano roll scripts\notes_import.json")
+
+
+def _load():
+    try:
+        with open(_IN) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def run():
+    data = _load()
+    if not data:
+        return
+    notes = data.get("notes") or []
+    mode = data.get("mode", "replace")
+    if mode not in ("replace", "merge"):
+        mode = "replace"
+    score = flp.score
+    ppq = getattr(score, "PPQ", 96)
+
+    if mode == "replace":
+        try:
+            score.clearNotes()
+        except Exception:
+            try:
+                for i in range(score.noteCount - 1, -1, -1):
+                    score.deleteNote(i)
+            except Exception:
+                pass
+
+    existing = set()
+    if mode == "merge":
+        for i in range(score.noteCount):
+            e = score.getNote(i)
+            existing.add((e.number, int(e.time)))
+
+    for n in notes:
+        try:
+            pitch = int(n["pitch"])
+            start = int(round(float(n["start_beat"]) * ppq))
+            length = int(round(float(n["length_beats"]) * ppq))
+            vel = int(n.get("velocity", 100))
+        except Exception:
+            continue
+        if mode == "merge" and (pitch, start) in existing:
+            continue
+        note = flp.Note()
+        note.number = pitch
+        note.time = start
+        note.length = length
+        note.velocity = max(0.0, min(1.0, vel / 127.0))
+        score.addNote(note)
+
+
+run()
