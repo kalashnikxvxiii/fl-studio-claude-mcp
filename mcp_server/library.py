@@ -30,13 +30,15 @@ def classify_fst(path):
                 return parts[i + 1:]
         return None
 
+    # A "Plugin database (...)" leaf folder holds: <Generators|Effects>/<Category>/<Name>.fst
     db = None
     for i, p in enumerate(parts):
-        if p.lower().startswith("plugin database"):
+        pl = p.lower()
+        if pl.startswith("plugin database") and pl != "plugin databases":
             db = parts[i + 1:]
             break
     if db is not None:
-        # .../Generators|Effects/<Category>/<Name>.fst  -> a raw plugin
+        # db = [Generators|Effects, <Category>, <Name>.fst]
         rec["kind"] = "effect" if (db and db[0].lower() == "effects") else "instrument"
         if len(db) >= 3:
             rec["category"] = db[1]
