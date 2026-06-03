@@ -139,11 +139,27 @@ def op_pattern_select(a):
 
 
 def op_set_steps(a):
-    """Write a step-sequencer row for a channel. steps = list of 0/1."""
+    """Write a step row. `steps` is a normalized rich list [{pos,pitch,velocity}].
+    Clears `length` (default 16) first, then writes each step's grid bit + params via
+    setStepParameterByIndex(step, patNum, chanIndex, paramType, value, globalIndex)."""
     ch = int(a["channel"])
     steps = a["steps"]
-    for pos, val in enumerate(steps):
-        channels.setGridBit(ch, pos, 1 if val else 0)
+    length = int(a.get("length", 16))
+    channels.selectOneChannel(ch)
+    pat = patterns.patternNumber()
+    for pos in range(length):
+        channels.setGridBit(ch, pos, 0)
+    for s in steps:
+        pos = int(s["pos"])
+        channels.setGridBit(ch, pos, 1)
+        # setStepParameterByIndex(index=channel, patNum, step, param, value)
+        try:
+            channels.setStepParameterByIndex(
+                ch, pat, pos, STEP_PITCH, int(s.get("pitch", 60)))
+            channels.setStepParameterByIndex(
+                ch, pat, pos, STEP_VEL, int(s.get("velocity", 100)))
+        except Exception:
+            pass
     return {"channel": ch, "channel_name": channels.getChannelName(ch),
             "written": len(steps)}
 
@@ -159,9 +175,8 @@ def op_clear_steps(a):
 def op_get_steps(a):
     ch = int(a["channel"])
     length = int(a.get("length", 16))
-    bits = [int(channels.getGridBit(ch, pos)) for pos in range(length)]
     return {"channel": ch, "channel_name": channels.getChannelName(ch),
-            "steps": bits}
+            "steps": _channel_steps(ch, length)}
 
 
 # Step parameter ids (confirmed live via probe: midi.pPitch=0, midi.pVelocity=1).
@@ -185,12 +200,8 @@ def _channel_grid_len(ch):
 
 
 def _channel_steps(ch, length):
-    """ON steps of `ch` with pitch+velocity. getStepParam(step, param, offset,
-    startPos) operates on the SELECTED channel, so select `ch` first."""
-    try:
-        channels.selectOneChannel(ch)
-    except Exception:
-        pass
+    """ON steps of `ch` with pitch+velocity.
+    getStepParam(step, param, index=channel, startPos)."""
     steps = []
     for pos in range(length):
         try:
@@ -200,11 +211,11 @@ def _channel_steps(ch, length):
             continue
         entry = {"pos": pos}
         try:
-            entry["pitch"] = int(channels.getStepParam(pos, STEP_PITCH, 0, 0))
+            entry["pitch"] = int(channels.getStepParam(pos, STEP_PITCH, ch, 0))
         except Exception:
             pass
         try:
-            entry["velocity"] = int(channels.getStepParam(pos, STEP_VEL, 0, 0))
+            entry["velocity"] = int(channels.getStepParam(pos, STEP_VEL, ch, 0))
         except Exception:
             pass
         steps.append(entry)
@@ -280,8 +291,29 @@ def op_get_project(a):
     return {"context": ctx, "channels": chans, "mixer": tracks}
 
 
+def op_channel_set_volume(a):
+    ch = int(a["channel"]); v = float(a["volume"])
+    channels.setChannelVolume(ch, v)
+    return {"channel": ch, "volume": channels.getChannelVolume(ch)}
+
+
+def op_channel_set_pan(a):
+    ch = int(a["channel"]); p = float(a["pan"])
+    channels.setChannelPan(ch, p)
+    return {"channel": ch, "pan": channels.getChannelPan(ch)}
+
+
+def op_channel_mute(a):
+    ch = int(a["channel"])
+    channels.muteChannel(ch)
+    return {"channel": ch, "muted": bool(channels.isChannelMuted(ch))}
+
+
 OPS = {
     "ping": op_ping,
+    "channel_set_volume": op_channel_set_volume,
+    "channel_set_pan": op_channel_set_pan,
+    "channel_mute": op_channel_mute,
     "get_project": op_get_project,
     "get_state": op_get_state,
     "play": op_play,
