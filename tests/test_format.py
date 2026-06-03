@@ -114,3 +114,43 @@ def test_readable_project_passes_through_patterns_markers():
     out = readable_project(raw)
     assert out["patterns"] == [{"num": 1, "name": "Intro"}]
     assert out["markers"] == [{"index": 0, "name": "Drop"}]
+
+
+from mcp_server.format import match_params, resolve_param
+
+_PARAMS = [
+    {"idx": 0, "name": "Main - Master level", "value": 0.75},
+    {"idx": 4, "name": "Main - Volume decay", "value": 0.5},
+    {"idx": 8, "name": "Main - Filter decay", "value": 0.25},
+]
+
+
+def test_match_params_substring_ci():
+    m = match_params(_PARAMS, "decay")
+    assert [p["idx"] for p in m] == [4, 8]
+    assert match_params(_PARAMS, "DECAY") == m
+    assert match_params(_PARAMS, "nope") == []
+
+
+def test_resolve_param_by_int():
+    assert resolve_param(4, _PARAMS) == (4, "Main - Volume decay")
+    assert resolve_param("8", _PARAMS) == (8, "Main - Filter decay")
+
+
+def test_resolve_param_by_unique_name():
+    assert resolve_param("Master level", _PARAMS) == (0, "Main - Master level")
+
+
+def test_resolve_param_errors():
+    try:
+        resolve_param("decay", _PARAMS); assert False
+    except ValueError as e:
+        assert "ambiguous" in str(e).lower()
+    try:
+        resolve_param("xyz", _PARAMS); assert False
+    except ValueError as e:
+        assert "no param" in str(e).lower()
+    try:
+        resolve_param(999, _PARAMS); assert False
+    except ValueError as e:
+        assert "range" in str(e).lower()
