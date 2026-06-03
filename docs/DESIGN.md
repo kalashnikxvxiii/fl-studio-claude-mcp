@@ -91,3 +91,10 @@ Claude Code  ⇄  MCP server (Python, Linux)
   Markers live in the playlist, so they are empty while working in pattern mode. Pattern
   color int is `0xRRGGBB` (signed; mask `& 0xFFFFFF`). `findFirstNextEmptyPat(2)` uses
   flag 2 = no-prompt (flag 0 opens a modal dialog → hangs the bridge).
+- Mixer routing (first Proton-phase breakthrough): `fl_route_channel` routes a channel to
+  a mixer track via `mixer.linkChannelToTrack`; `fl_get_project` reports each channel's
+  `mixer_track` (`channels.getTargetFxTrack`). Green neighbors: `fl_track_send`
+  (`mixer.setRouteTo` + `afterRoutingChanged`, level 0-1 via `setRouteToLevel`),
+  `fl_plugin_mix_level` (`setPluginMixLevel`, 0-1), `fl_plugin_mute`
+  (`setPluginMuteState(track, slot, value)`). Loading presets/plugins remains out of
+  reach via the clean controller API (see docs/proton-recon.md).
