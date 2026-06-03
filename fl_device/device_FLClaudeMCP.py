@@ -263,6 +263,10 @@ def op_get_project(a):
             entry["type"] = channels.getChannelType(ch)
         except Exception:
             entry["type"] = None
+        try:
+            entry["mixer_track"] = channels.getTargetFxTrack(ch)
+        except Exception:
+            entry["mixer_track"] = None
         chans.append(entry)
 
     try:
@@ -424,8 +428,82 @@ def op_channel_mute(a):
     return {"channel": ch, "muted": bool(channels.isChannelMuted(ch))}
 
 
+def op_route_channel(a):
+    ch = int(a["channel"]); track = int(a["track"])
+    n = mixer.trackCount()
+    if track < 0 or track >= n:
+        return {"error": "track %d out of range 0..%d" % (track, n - 1)}
+    mixer.linkChannelToTrack(ch, track)
+    return {"channel": ch, "mixer_track": channels.getTargetFxTrack(ch)}
+
+
+def op_track_send(a):
+    f = int(a["from_track"]); t = int(a["to_track"]); lvl = float(a.get("level", 1.0))
+    mixer.setRouteTo(f, t, 1)
+    if hasattr(mixer, "afterRoutingChanged"):
+        mixer.afterRoutingChanged()
+    try:
+        mixer.setRouteToLevel(f, t, lvl)
+    except Exception:
+        pass
+    return {"from": f, "to": t, "active": mixer.getRouteSendActive(f, t)}
+
+
+def op_plugin_mix_level(a):
+    t = int(a["track"]); slot = int(a["slot"]); lvl = float(a["level"])
+    mixer.setPluginMixLevel(t, slot, lvl)
+    return {"track": t, "slot": slot, "level": lvl}
+
+
+def op_plugin_mute(a):
+    t = int(a["track"]); slot = int(a["slot"]); val = int(a.get("value", 1))
+    # confirmed signature: setPluginMuteState(track, slot, value)
+    mixer.setPluginMuteState(t, slot, val)
+    return {"track": t, "slot": slot, "muted": bool(val)}
+
+
+def op_probe_route2(a):
+    """Temporary (mixer routing): confirm neighbor signatures + scales + real effects.
+    Acts on tracks 1->2, plugin slot 0."""
+    out = {}
+    try:
+        before = mixer.getRouteSendActive(1, 2)
+        mixer.setRouteTo(1, 2, 1)
+        if hasattr(mixer, "afterRoutingChanged"):
+            mixer.afterRoutingChanged()
+        out["send_1to2_before"] = before
+        out["send_1to2_after"] = mixer.getRouteSendActive(1, 2)
+    except Exception as e:
+        out["send_err"] = "%s: %s" % (type(e).__name__, e)
+    try:
+        mixer.setRouteToLevel(1, 2, 0.5)
+        out["routeToLevel_after"] = mixer.getRouteToLevel(1, 2)
+    except Exception as e:
+        out["routeToLevel_err"] = "%s: %s" % (type(e).__name__, e)
+    try:
+        mixer.setPluginMixLevel(1, 0, 0.5)
+        out["pluginMixLevel"] = "OK(no-getter)"
+    except Exception as e:
+        out["pluginMixLevel_err"] = "%s: %s" % (type(e).__name__, e)
+    for sig, fn in [
+        ("mute(t,s)", lambda: mixer.setPluginMuteState(1, 0)),
+        ("mute(t,s,1)", lambda: mixer.setPluginMuteState(1, 0, 1)),
+    ]:
+        try:
+            r = fn()
+            out["pluginMute:" + sig] = "OK r=%s" % r
+        except Exception as e:
+            out["pluginMute:" + sig] = "%s: %s" % (type(e).__name__, e)
+    return out
+
+
 OPS = {
     "ping": op_ping,
+    "probe_route2": op_probe_route2,
+    "route_channel": op_route_channel,
+    "track_send": op_track_send,
+    "plugin_mix_level": op_plugin_mix_level,
+    "plugin_mute": op_plugin_mute,
     "pattern_rename": op_pattern_rename,
     "pattern_set_color": op_pattern_set_color,
     "pattern_clone": op_pattern_clone,

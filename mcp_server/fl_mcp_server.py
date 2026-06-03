@@ -319,6 +319,32 @@ def fl_channel_mute(channel: int) -> dict:
 
 
 @mcp.tool()
+def fl_route_channel(channel: int, track: int) -> dict:
+    """Route a channel-rack channel to a mixer track (0 = Master). Programmatic mixer
+    routing — the first Proton-phase breakthrough."""
+    return _send("route_channel", {"channel": channel, "track": track})
+
+
+@mcp.tool()
+def fl_track_send(from_track: int, to_track: int, level: float = 1.0) -> dict:
+    """Enable a send from one mixer track to another (level 0.0-1.0)."""
+    return _send("track_send", {"from_track": from_track, "to_track": to_track,
+                                "level": level})
+
+
+@mcp.tool()
+def fl_plugin_mix_level(track: int, slot: int, level: float) -> dict:
+    """Set a mixer-track plugin slot's mix/wet level (0.0-1.0)."""
+    return _send("plugin_mix_level", {"track": track, "slot": slot, "level": level})
+
+
+@mcp.tool()
+def fl_plugin_mute(track: int, slot: int, value: int = 1) -> dict:
+    """Set a mixer-track plugin slot's mute state (1 = muted, 0 = unmuted)."""
+    return _send("plugin_mute", {"track": track, "slot": slot, "value": value})
+
+
+@mcp.tool()
 def fl_pattern_rename(num: int, name: str) -> dict:
     """Rename a pattern by number."""
     return _send("pattern_rename", {"num": num, "name": name})
