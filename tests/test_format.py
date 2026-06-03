@@ -105,3 +105,12 @@ def test_color_to_int_invalid_falls_back():
 def test_int_to_hex_roundtrip():
     assert int_to_hex(0xFF8800) == "#FF8800"
     assert color_to_int(int_to_hex(0x5C7CFA)) == 0x5C7CFA
+
+
+def test_readable_project_passes_through_patterns_markers():
+    raw = {"context": {"tempo": 120}, "channels": [], "mixer": [],
+           "patterns": [{"num": 1, "name": "Intro"}],
+           "markers": [{"index": 0, "name": "Drop"}]}
+    out = readable_project(raw)
+    assert out["patterns"] == [{"num": 1, "name": "Intro"}]
+    assert out["markers"] == [{"index": 0, "name": "Drop"}]

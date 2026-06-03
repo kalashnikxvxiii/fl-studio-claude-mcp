@@ -19,9 +19,11 @@ def ticks_to_beats(ticks, ppq):
 
 
 def readable_project(raw):
-    """Annotate a raw get_project dict with note names; pass-through otherwise."""
-    out = {"context": dict(raw.get("context", {})),
-           "channels": [], "mixer": raw.get("mixer", [])}
+    """Annotate a raw get_project dict with note names; pass any other keys through."""
+    out = dict(raw)                       # carry through patterns/markers/etc.
+    out["context"] = dict(raw.get("context", {}))
+    out["mixer"] = raw.get("mixer", [])
+    out["channels"] = []
     for ch in raw.get("channels", []):
         c = dict(ch)
         c["steps"] = []

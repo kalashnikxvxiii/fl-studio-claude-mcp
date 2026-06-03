@@ -85,3 +85,9 @@ Claude Code  ⇄  MCP server (Python, Linux)
   reseed). `fl_status` diagnoses virmidi/FL/controller with fix hints. `setup/install.sh`
   installs `snd-virmidi.conf` to `/etc/modules-load.d/` for boot persistence. CI runs the
   FL-free tests on push/PR.
+- Arrangement tools (`patterns`/`arrangement` APIs): pattern rename/color/clone/new/length,
+  markers (add at current time / list), timeline time + selection. `fl_get_project` now
+  also returns `patterns[]` and `markers[]` (readable_project passes through extra keys).
+  Markers live in the playlist, so they are empty while working in pattern mode. Pattern
+  color int is `0xRRGGBB` (signed; mask `& 0xFFFFFF`). `findFirstNextEmptyPat(2)` uses
+  flag 2 = no-prompt (flag 0 opens a modal dialog → hangs the bridge).

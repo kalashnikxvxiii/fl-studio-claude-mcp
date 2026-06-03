@@ -317,42 +317,6 @@ def op_get_project(a):
             "patterns": pats, "markers": marks}
 
 
-def op_probe_arr(a):
-    """Temporary: confirm write signatures + color byte order + marker time."""
-    import arrangement as _arr
-    out = {}
-    try:
-        patterns.setPatternColor(1, 0xFF8800)   # pure orange if 0xRRGGBB
-        out["getPatternColor(1)_after_FF8800"] = patterns.getPatternColor(1)
-    except Exception as e:
-        out["color_err"] = "%s: %s" % (type(e).__name__, e)
-    try:
-        patterns.setPatternName(1, "ProbeName")
-        out["name_after_set"] = patterns.getPatternName(1)
-        out["length(1)"] = patterns.getPatternLength(1)
-    except Exception as e:
-        out["name_err"] = "%s: %s" % (type(e).__name__, e)
-    # flag 2 = FFNEP_DontPromptName (no modal dialog). Only test that one.
-    try:
-        out["ffnep(2)"] = patterns.findFirstNextEmptyPat(2)
-    except Exception as e:
-        out["ffnep(2)_err"] = "%s: %s" % (type(e).__name__, e)
-    try:
-        t = _arr.currentTime(0)
-        out["currentTime"] = t
-        _arr.addAutoTimeMarker(t, "ProbeMarker")
-        out["marker0_after_add"] = _arr.getMarkerName(0)
-        out["marker_sig"] = "time,name"
-    except Exception as e:
-        out["marker_err_timeName"] = "%s: %s" % (type(e).__name__, e)
-    try:
-        _arr.selectionSet(0, 100)
-        out["sel_start"] = _arr.selectionStart()
-        out["sel_end"] = _arr.selectionEnd()
-    except Exception as e:
-        out["sel_err"] = "%s: %s" % (type(e).__name__, e)
-    return out
-
 
 def _col_to_hex(v):
     try:
@@ -462,7 +426,6 @@ def op_channel_mute(a):
 
 OPS = {
     "ping": op_ping,
-    "probe_arr": op_probe_arr,
     "pattern_rename": op_pattern_rename,
     "pattern_set_color": op_pattern_set_color,
     "pattern_clone": op_pattern_clone,
