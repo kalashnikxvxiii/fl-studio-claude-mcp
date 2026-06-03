@@ -56,3 +56,30 @@ def test_build_import_payload_merge_and_normalizes():
 def test_build_import_payload_rejects_bad_mode():
     p = build_import_payload([], mode="nonsense")
     assert p["mode"] == "replace"                    # unknown -> replace
+
+
+from mcp_server.format import normalize_steps
+
+
+def test_normalize_steps_simple_form():
+    out = normalize_steps([1, 0, 1, 0])
+    assert out == [
+        {"pos": 0, "pitch": 60, "velocity": 100},
+        {"pos": 2, "pitch": 60, "velocity": 100},
+    ]
+
+
+def test_normalize_steps_rich_form_fills_defaults():
+    out = normalize_steps([{"pos": 0, "pitch": 64, "velocity": 70}, {"pos": 4}])
+    assert out[0] == {"pos": 0, "pitch": 64, "velocity": 70}
+    assert out[1] == {"pos": 4, "pitch": 60, "velocity": 100}
+
+
+def test_normalize_steps_clamps_velocity():
+    out = normalize_steps([{"pos": 0, "velocity": 200}, {"pos": 1, "velocity": -5}])
+    assert out[0]["velocity"] == 127
+    assert out[1]["velocity"] == 0
+
+
+def test_normalize_steps_empty():
+    assert normalize_steps([]) == []

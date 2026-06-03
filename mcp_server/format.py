@@ -56,3 +56,26 @@ def build_import_payload(notes, mode="replace"):
             "velocity": int(n.get("velocity", 100)),
         })
     return {"mode": mode, "notes": norm}
+
+
+def normalize_steps(steps):
+    """Normalize the two accepted step forms into a rich list.
+
+    Simple form: [1, 0, 1, ...] -> one entry per ON position, default pitch/velocity.
+    Rich form:   [{pos, pitch?, velocity?}, ...] -> defaults filled, velocity clamped.
+    Default pitch=60, velocity=100; velocity clamped to 0..127.
+    """
+    if not steps:
+        return []
+    out = []
+    if isinstance(steps[0], dict):
+        for s in steps:
+            vel = max(0, min(127, int(s.get("velocity", 100))))
+            out.append({"pos": int(s["pos"]),
+                        "pitch": int(s.get("pitch", 60)),
+                        "velocity": vel})
+    else:
+        for pos, on in enumerate(steps):
+            if on:
+                out.append({"pos": pos, "pitch": 60, "velocity": 100})
+    return out
