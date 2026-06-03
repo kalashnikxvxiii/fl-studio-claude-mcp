@@ -351,6 +351,9 @@ def _maybe_execute():
     if not cmd:
         return
     cid = cmd.get("id")
+    # Execute on ANY id different from the last one (not strictly greater), so a
+    # server restart that reseeds the id lower is still honored. Multi-trigger dedup
+    # still holds: the same id firing ~4x/note runs once.
     if cid is None or cid == _last_id:
         return
     _last_id = cid
