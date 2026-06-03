@@ -263,6 +263,10 @@ def op_get_project(a):
             entry["type"] = channels.getChannelType(ch)
         except Exception:
             entry["type"] = None
+        try:
+            entry["mixer_track"] = channels.getTargetFxTrack(ch)
+        except Exception:
+            entry["mixer_track"] = None
         chans.append(entry)
 
     try:
@@ -424,37 +428,39 @@ def op_channel_mute(a):
     return {"channel": ch, "muted": bool(channels.isChannelMuted(ch))}
 
 
-OPS = {
-    "ping": op_ping,
-    "pattern_rename": op_pattern_rename,
-    "pattern_set_color": op_pattern_set_color,
-    "pattern_clone": op_pattern_clone,
-    "pattern_new_empty": op_pattern_new_empty,
-    "pattern_length": op_pattern_length,
-    "marker_add": op_marker_add,
-    "markers_list": op_markers_list,
-    "get_time": op_get_time,
-    "select_region": op_select_region,
-    "select_clear": op_select_clear,
-    "channel_set_volume": op_channel_set_volume,
-    "channel_set_pan": op_channel_set_pan,
-    "channel_mute": op_channel_mute,
-    "get_project": op_get_project,
-    "get_state": op_get_state,
-    "play": op_play,
-    "stop": op_stop,
-    "record": op_record,
-    "set_tempo": op_set_tempo,
-    "mixer_set_volume": op_mixer_set_volume,
-    "mixer_set_pan": op_mixer_set_pan,
-    "mixer_mute": op_mixer_mute,
-    "mixer_solo": op_mixer_solo,
-    "channel_select": op_channel_select,
-    "pattern_select": op_pattern_select,
-    "set_steps": op_set_steps,
-    "clear_steps": op_clear_steps,
-    "get_steps": op_get_steps,
-}
+def op_route_channel(a):
+    ch = int(a["channel"]); track = int(a["track"])
+    n = mixer.trackCount()
+    if track < 0 or track >= n:
+        return {"error": "track %d out of range 0..%d" % (track, n - 1)}
+    mixer.linkChannelToTrack(ch, track)
+    return {"channel": ch, "mixer_track": channels.getTargetFxTrack(ch)}
+
+
+def op_track_send(a):
+    f = int(a["from_track"]); t = int(a["to_track"]); lvl = float(a.get("level", 1.0))
+    mixer.setRouteTo(f, t, 1)
+    if hasattr(mixer, "afterRoutingChanged"):
+        mixer.afterRoutingChanged()
+    try:
+        mixer.setRouteToLevel(f, t, lvl)
+    except Exception:
+        pass
+    return {"from": f, "to": t, "active": mixer.getRouteSendActive(f, t)}
+
+
+def op_plugin_mix_level(a):
+    t = int(a["track"]); slot = int(a["slot"]); lvl = float(a["level"])
+    mixer.setPluginMixLevel(t, slot, lvl)
+    return {"track": t, "slot": slot, "level": lvl}
+
+
+def op_plugin_mute(a):
+    t = int(a["track"]); slot = int(a["slot"]); val = int(a.get("value", 1))
+    # confirmed signature: setPluginMuteState(track, slot, value)
+    mixer.setPluginMuteState(t, slot, val)
+    return {"track": t, "slot": slot, "muted": bool(val)}
+
 
 
 def _dispatch(cmd):
