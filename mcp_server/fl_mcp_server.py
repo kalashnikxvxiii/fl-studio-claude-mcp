@@ -19,11 +19,11 @@ from mcp.server.fastmcp import FastMCP
 
 try:
     from .format import (readable_project, pitch_name, ticks_to_beats,
-                         build_import_payload)
+                         build_import_payload, normalize_steps)
     from . import library as _lib
 except ImportError:                # when run as a plain script, not a package
     from format import (readable_project, pitch_name, ticks_to_beats,
-                        build_import_payload)
+                        build_import_payload, normalize_steps)
     import library as _lib
 
 USER = getpass.getuser()
@@ -264,10 +264,13 @@ def fl_pattern_select(index: int) -> dict:
 
 
 @mcp.tool()
-def fl_set_steps(channel: int, steps: list[int]) -> dict:
-    """Write a step-sequencer row for a channel. `steps` is a list of 0/1
-    (e.g. a 16-step kick: [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0])."""
-    return _send("set_steps", {"channel": channel, "steps": steps})
+def fl_set_steps(channel: int, steps: list, length: int = 16) -> dict:
+    """Write a channel's step row. `steps` may be a simple on/off list
+    [1,0,1,...] OR a rich list [{"pos":0,"pitch":60,"velocity":100}, ...] for
+    per-step pitch/velocity (groove, ghost notes, accents). Clears `length`
+    steps first, then writes."""
+    rich = normalize_steps(steps)
+    return _send("set_steps", {"channel": channel, "steps": rich, "length": length})
 
 
 @mcp.tool()
@@ -278,8 +281,26 @@ def fl_clear_steps(channel: int, length: int = 16) -> dict:
 
 @mcp.tool()
 def fl_get_steps(channel: int, length: int = 16) -> dict:
-    """Read the first `length` steps of a channel's step row."""
+    """Read a channel's steps as a rich list [{pos,pitch,velocity}, ...]."""
     return _send("get_steps", {"channel": channel, "length": length})
+
+
+@mcp.tool()
+def fl_channel_set_volume(channel: int, volume: float) -> dict:
+    """Set a channel-rack channel's volume (0.0-1.0). Distinct from mixer-track volume."""
+    return _send("channel_set_volume", {"channel": channel, "volume": volume})
+
+
+@mcp.tool()
+def fl_channel_set_pan(channel: int, pan: float) -> dict:
+    """Set a channel-rack channel's pan (-1.0 left .. 1.0 right)."""
+    return _send("channel_set_pan", {"channel": channel, "pan": pan})
+
+
+@mcp.tool()
+def fl_channel_mute(channel: int) -> dict:
+    """Toggle mute on a channel-rack channel."""
+    return _send("channel_mute", {"channel": channel})
 
 
 if __name__ == "__main__":
