@@ -57,9 +57,9 @@ Claude Code  ⇄  MCP server (Python, Linux)
 - Requires the user to assign the controller script to a virmidi input in FL once (UI).
 - FL must be running with the controller assigned; snd-virmidi must be loaded.
 - Probed (2026-06-01): the controller API exposes per-step pitch+velocity
-  (`channels.getStepParam(step, param, offset, startPos)` on the *selected* channel;
-  `midi.pPitch=0`, `midi.pVelocity=1`), channel types, plugin names, and mixer
-  routing — but NOT key/scale (reported as `null`) and NOT piano-roll notes.
+  (`channels.getStepParam(step, param, index=channel, startPos)`; `midi.pPitch=0`,
+  `midi.pVelocity=1`), channel types, plugin names, and mixer routing — but NOT
+  key/scale (reported as `null`) and NOT piano-roll notes.
 - Reading piano-roll notes needs a piano-roll script (`flpianoroll`), launched
   manually from the Piano Roll menu. That sandbox can only write to FL's
   "Piano roll scripts" folder, so `notes_export.json` lands there (not the Hardware
@@ -74,3 +74,9 @@ Claude Code  ⇄  MCP server (Python, Linux)
   `Data/Patches/Plugin presets` (~7k .fst), `Data/Patches/Packs` (~3k .wav), classified
   by path (10808 records indexed). Loading a result into FL is still manual — the
   controller API exposes no plugin/preset loading (future "Proton-phase" work).
+- Expressive steps: `fl_set_steps` accepts a rich form `[{pos,pitch,velocity}]` (per-step
+  pitch/velocity via `channels.setStepParameterByIndex(channel, patNum, step, param,
+  value)` — note arg order; `setStepParam` does NOT exist), and `fl_get_steps` returns
+  the same rich shape (breaking change from the old `[0/1]`). Channel-rack volume/pan/mute
+  via `fl_channel_set_volume/pan/mute` (`channels.setChannelVolume/Pan/muteChannel`) —
+  distinct from the mixer-track tools. `getStepParam(step, param, index=channel, startPos)`.

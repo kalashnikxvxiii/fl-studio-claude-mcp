@@ -61,7 +61,10 @@ Then, in Claude: *"run fl_ping"* — you should get FL's version, tempo and play
 | `fl_mixer_mute(track)` / `fl_mixer_solo(track)` | mute / solo |
 | `fl_channel_select(index)` | select a channel |
 | `fl_pattern_select(index)` | jump to a pattern |
-| `fl_set_steps` / `fl_get_steps` / `fl_clear_steps` | step sequencer |
+| `fl_set_steps(channel, steps, length)` | step row; `steps` = `[1,0,1,...]` or rich `[{pos,pitch,velocity},...]` |
+| `fl_get_steps(channel, length)` | read steps as `[{pos,pitch,velocity},...]` |
+| `fl_clear_steps(channel, length)` | clear a step row |
+| `fl_channel_set_volume/pan/mute(channel, ...)` | channel-rack volume / pan / mute |
 
 ### Reading piano-roll notes
 
