@@ -80,3 +80,8 @@ Claude Code  ⇄  MCP server (Python, Linux)
   the same rich shape (breaking change from the old `[0/1]`). Channel-rack volume/pan/mute
   via `fl_channel_set_volume/pan/mute` (`channels.setChannelVolume/Pan/muteChannel`) —
   distinct from the mixer-track tools. `getStepParam(step, param, index=channel, startPos)`.
+- Robustness: command ids come from a persistent counter (`id_counter.txt`) so they stay
+  monotonic across server restarts (the device dedups on `id != last`, tolerating a
+  reseed). `fl_status` diagnoses virmidi/FL/controller with fix hints. `setup/install.sh`
+  installs `snd-virmidi.conf` to `/etc/modules-load.d/` for boot persistence. CI runs the
+  FL-free tests on push/PR.
