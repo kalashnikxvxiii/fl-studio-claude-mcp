@@ -291,6 +291,81 @@ def op_get_project(a):
     return {"context": ctx, "channels": chans, "mixer": tracks}
 
 
+def op_probe_arr(a):
+    """Temporary: confirm write signatures + color byte order + marker time."""
+    import arrangement as _arr
+    out = {}
+    try:
+        patterns.setPatternColor(1, 0xFF8800)   # pure orange if 0xRRGGBB
+        out["getPatternColor(1)_after_FF8800"] = patterns.getPatternColor(1)
+    except Exception as e:
+        out["color_err"] = "%s: %s" % (type(e).__name__, e)
+    try:
+        patterns.setPatternName(1, "ProbeName")
+        out["name_after_set"] = patterns.getPatternName(1)
+        out["length(1)"] = patterns.getPatternLength(1)
+    except Exception as e:
+        out["name_err"] = "%s: %s" % (type(e).__name__, e)
+    # flag 2 = FFNEP_DontPromptName (no modal dialog). Only test that one.
+    try:
+        out["ffnep(2)"] = patterns.findFirstNextEmptyPat(2)
+    except Exception as e:
+        out["ffnep(2)_err"] = "%s: %s" % (type(e).__name__, e)
+    try:
+        t = _arr.currentTime(0)
+        out["currentTime"] = t
+        _arr.addAutoTimeMarker(t, "ProbeMarker")
+        out["marker0_after_add"] = _arr.getMarkerName(0)
+        out["marker_sig"] = "time,name"
+    except Exception as e:
+        out["marker_err_timeName"] = "%s: %s" % (type(e).__name__, e)
+    try:
+        _arr.selectionSet(0, 100)
+        out["sel_start"] = _arr.selectionStart()
+        out["sel_end"] = _arr.selectionEnd()
+    except Exception as e:
+        out["sel_err"] = "%s: %s" % (type(e).__name__, e)
+    return out
+
+
+def _col_to_hex(v):
+    try:
+        return "#%06X" % (int(v) & 0xFFFFFF)
+    except Exception:
+        return "#000000"
+
+
+def op_pattern_rename(a):
+    n = int(a["num"]); name = str(a["name"])
+    patterns.setPatternName(n, name)
+    return {"num": n, "name": patterns.getPatternName(n)}
+
+
+def op_pattern_set_color(a):
+    n = int(a["num"]); c = int(a["color_int"])
+    patterns.setPatternColor(n, c)
+    return {"num": n, "color": _col_to_hex(patterns.getPatternColor(n))}
+
+
+def op_pattern_clone(a):
+    n = int(a["num"])
+    patterns.jumpToPattern(n)
+    patterns.clonePattern(n)
+    return {"cloned_from": n, "pattern_count": patterns.patternCount()}
+
+
+def op_pattern_new_empty(a):
+    # flag 2 = FFNEP_DontPromptName (no modal); it jumps to the empty pattern,
+    # so read the resulting index from patternNumber().
+    patterns.findFirstNextEmptyPat(2)
+    return {"pattern": patterns.patternNumber()}
+
+
+def op_pattern_length(a):
+    n = int(a["num"])
+    return {"num": n, "length": patterns.getPatternLength(n)}
+
+
 def op_channel_set_volume(a):
     ch = int(a["channel"]); v = float(a["volume"])
     channels.setChannelVolume(ch, v)
@@ -311,6 +386,12 @@ def op_channel_mute(a):
 
 OPS = {
     "ping": op_ping,
+    "probe_arr": op_probe_arr,
+    "pattern_rename": op_pattern_rename,
+    "pattern_set_color": op_pattern_set_color,
+    "pattern_clone": op_pattern_clone,
+    "pattern_new_empty": op_pattern_new_empty,
+    "pattern_length": op_pattern_length,
     "channel_set_volume": op_channel_set_volume,
     "channel_set_pan": op_channel_set_pan,
     "channel_mute": op_channel_mute,
