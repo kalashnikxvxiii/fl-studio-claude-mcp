@@ -83,3 +83,34 @@ def test_normalize_steps_clamps_velocity():
 
 def test_normalize_steps_empty():
     assert normalize_steps([]) == []
+
+
+from mcp_server.format import color_to_int, int_to_hex
+
+
+def test_color_to_int_hex_string():
+    assert color_to_int("#FF8800") == 0xFF8800
+    assert color_to_int("FF8800") == 0xFF8800
+
+
+def test_color_to_int_rgb_list():
+    assert color_to_int([255, 136, 0]) == 0xFF8800
+
+
+def test_color_to_int_invalid_falls_back():
+    assert color_to_int("not-a-color") == 0
+    assert color_to_int(None) == 0
+
+
+def test_int_to_hex_roundtrip():
+    assert int_to_hex(0xFF8800) == "#FF8800"
+    assert color_to_int(int_to_hex(0x5C7CFA)) == 0x5C7CFA
+
+
+def test_readable_project_passes_through_patterns_markers():
+    raw = {"context": {"tempo": 120}, "channels": [], "mixer": [],
+           "patterns": [{"num": 1, "name": "Intro"}],
+           "markers": [{"index": 0, "name": "Drop"}]}
+    out = readable_project(raw)
+    assert out["patterns"] == [{"num": 1, "name": "Intro"}]
+    assert out["markers"] == [{"index": 0, "name": "Drop"}]

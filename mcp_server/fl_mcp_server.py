@@ -19,13 +19,13 @@ from mcp.server.fastmcp import FastMCP
 
 try:
     from .format import (readable_project, pitch_name, ticks_to_beats,
-                         build_import_payload, normalize_steps)
+                         build_import_payload, normalize_steps, color_to_int)
     from . import library as _lib
     from . import idgen as _idgen
     from . import preflight as _preflight
 except ImportError:                # when run as a plain script, not a package
     from format import (readable_project, pitch_name, ticks_to_beats,
-                        build_import_payload, normalize_steps)
+                        build_import_payload, normalize_steps, color_to_int)
     import library as _lib
     import idgen as _idgen
     import preflight as _preflight
@@ -316,6 +316,66 @@ def fl_channel_set_pan(channel: int, pan: float) -> dict:
 def fl_channel_mute(channel: int) -> dict:
     """Toggle mute on a channel-rack channel."""
     return _send("channel_mute", {"channel": channel})
+
+
+@mcp.tool()
+def fl_pattern_rename(num: int, name: str) -> dict:
+    """Rename a pattern by number."""
+    return _send("pattern_rename", {"num": num, "name": name})
+
+
+@mcp.tool()
+def fl_pattern_set_color(num: int, color) -> dict:
+    """Set a pattern's color. `color` is '#RRGGBB' or [r,g,b]."""
+    return _send("pattern_set_color", {"num": num, "color_int": color_to_int(color)})
+
+
+@mcp.tool()
+def fl_pattern_clone(num: int) -> dict:
+    """Clone a pattern by number; returns the new pattern count."""
+    return _send("pattern_clone", {"num": num})
+
+
+@mcp.tool()
+def fl_pattern_new_empty() -> dict:
+    """Jump to the first empty pattern (creating the slot)."""
+    return _send("pattern_new_empty")
+
+
+@mcp.tool()
+def fl_pattern_length(num: int) -> dict:
+    """Get a pattern's length (in steps/beats per FL)."""
+    return _send("pattern_length", {"num": num})
+
+
+@mcp.tool()
+def fl_marker_add(name: str) -> dict:
+    """Add a playlist marker at the current time with `name`."""
+    return _send("marker_add", {"name": name})
+
+
+@mcp.tool()
+def fl_markers_list() -> dict:
+    """List playlist markers (empty in pattern mode)."""
+    return _send("markers_list")
+
+
+@mcp.tool()
+def fl_get_time() -> dict:
+    """Current playhead time + selection (start/end, active)."""
+    return _send("get_time")
+
+
+@mcp.tool()
+def fl_select_region(start: int, end: int) -> dict:
+    """Set the timeline selection region [start, end]."""
+    return _send("select_region", {"start": start, "end": end})
+
+
+@mcp.tool()
+def fl_select_clear() -> dict:
+    """Clear the timeline selection."""
+    return _send("select_clear")
 
 
 if __name__ == "__main__":

@@ -19,9 +19,11 @@ def ticks_to_beats(ticks, ppq):
 
 
 def readable_project(raw):
-    """Annotate a raw get_project dict with note names; pass-through otherwise."""
-    out = {"context": dict(raw.get("context", {})),
-           "channels": [], "mixer": raw.get("mixer", [])}
+    """Annotate a raw get_project dict with note names; pass any other keys through."""
+    out = dict(raw)                       # carry through patterns/markers/etc.
+    out["context"] = dict(raw.get("context", {}))
+    out["mixer"] = raw.get("mixer", [])
+    out["channels"] = []
     for ch in raw.get("channels", []):
         c = dict(ch)
         c["steps"] = []
@@ -79,3 +81,25 @@ def normalize_steps(steps):
             if on:
                 out.append({"pos": pos, "pitch": 60, "velocity": 100})
     return out
+
+
+def color_to_int(spec):
+    """Color spec -> FL int (0xRRGGBB). Accepts '#RRGGBB', 'RRGGBB', or [r,g,b].
+    Invalid input -> 0 (never raises)."""
+    try:
+        if isinstance(spec, (list, tuple)) and len(spec) == 3:
+            r, g, b = (int(spec[0]), int(spec[1]), int(spec[2]))
+            return (r << 16) | (g << 8) | b
+        if isinstance(spec, str):
+            return int(spec.lstrip("#"), 16)
+    except (ValueError, TypeError):
+        return 0
+    return 0
+
+
+def int_to_hex(value):
+    """FL color int -> '#RRGGBB' (masks the sign bit FL returns)."""
+    try:
+        return "#%06X" % (int(value) & 0xFFFFFF)
+    except (ValueError, TypeError):
+        return "#000000"

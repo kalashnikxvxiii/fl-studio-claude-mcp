@@ -288,7 +288,122 @@ def op_get_project(a):
             "plugins": [p for p in slots if p],
         })
 
-    return {"context": ctx, "channels": chans, "mixer": tracks}
+    pats = []
+    try:
+        for n in range(1, patterns.patternCount() + 1):
+            p = {"num": n}
+            try:
+                p["name"] = patterns.getPatternName(n)
+            except Exception:
+                p["name"] = None
+            try:
+                p["color"] = _col_to_hex(patterns.getPatternColor(n))
+            except Exception:
+                p["color"] = None
+            try:
+                p["length"] = patterns.getPatternLength(n)
+            except Exception:
+                p["length"] = None
+            pats.append(p)
+    except Exception:
+        pass
+
+    try:
+        marks = _scan_markers()
+    except Exception:
+        marks = []
+
+    return {"context": ctx, "channels": chans, "mixer": tracks,
+            "patterns": pats, "markers": marks}
+
+
+
+def _col_to_hex(v):
+    try:
+        return "#%06X" % (int(v) & 0xFFFFFF)
+    except Exception:
+        return "#000000"
+
+
+def op_pattern_rename(a):
+    n = int(a["num"]); name = str(a["name"])
+    patterns.setPatternName(n, name)
+    return {"num": n, "name": patterns.getPatternName(n)}
+
+
+def op_pattern_set_color(a):
+    n = int(a["num"]); c = int(a["color_int"])
+    patterns.setPatternColor(n, c)
+    return {"num": n, "color": _col_to_hex(patterns.getPatternColor(n))}
+
+
+def op_pattern_clone(a):
+    n = int(a["num"])
+    patterns.jumpToPattern(n)
+    patterns.clonePattern(n)
+    return {"cloned_from": n, "pattern_count": patterns.patternCount()}
+
+
+def op_pattern_new_empty(a):
+    # flag 2 = FFNEP_DontPromptName (no modal); it jumps to the empty pattern,
+    # so read the resulting index from patternNumber().
+    patterns.findFirstNextEmptyPat(2)
+    return {"pattern": patterns.patternNumber()}
+
+
+def op_pattern_length(a):
+    n = int(a["num"])
+    return {"num": n, "length": patterns.getPatternLength(n)}
+
+
+def op_marker_add(a):
+    import arrangement as _arr
+    name = str(a["name"])
+    t = _arr.currentTime(0)
+    _arr.addAutoTimeMarker(t, name)
+    return {"name": name, "time": t}
+
+
+def _scan_markers():
+    import arrangement as _arr
+    out = []
+    empties = 0
+    i = 0
+    while empties < 4 and i < 256:
+        nm = _arr.getMarkerName(i)
+        if nm:
+            out.append({"index": i, "name": nm})
+            empties = 0
+        else:
+            empties += 1
+        i += 1
+    return out
+
+
+def op_markers_list(a):
+    return {"markers": _scan_markers()}
+
+
+def op_get_time(a):
+    import arrangement as _arr
+    active = bool(_arr.selectionIsActive()) if hasattr(_arr, "selectionIsActive") else False
+    return {"time": _arr.currentTime(0),
+            "selection_active": active,
+            "sel_start": _arr.selectionStart(),
+            "sel_end": _arr.selectionEnd()}
+
+
+def op_select_region(a):
+    import arrangement as _arr
+    s = int(a["start"]); e = int(a["end"])
+    _arr.selectionSet(s, e)
+    return {"sel_start": _arr.selectionStart(), "sel_end": _arr.selectionEnd()}
+
+
+def op_select_clear(a):
+    import arrangement as _arr
+    _arr.selectionClear()
+    return {"cleared": True}
 
 
 def op_channel_set_volume(a):
@@ -311,6 +426,16 @@ def op_channel_mute(a):
 
 OPS = {
     "ping": op_ping,
+    "pattern_rename": op_pattern_rename,
+    "pattern_set_color": op_pattern_set_color,
+    "pattern_clone": op_pattern_clone,
+    "pattern_new_empty": op_pattern_new_empty,
+    "pattern_length": op_pattern_length,
+    "marker_add": op_marker_add,
+    "markers_list": op_markers_list,
+    "get_time": op_get_time,
+    "select_region": op_select_region,
+    "select_clear": op_select_clear,
     "channel_set_volume": op_channel_set_volume,
     "channel_set_pan": op_channel_set_pan,
     "channel_mute": op_channel_mute,
