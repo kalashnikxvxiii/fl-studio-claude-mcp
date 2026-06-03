@@ -428,6 +428,48 @@ def op_channel_mute(a):
     return {"channel": ch, "muted": bool(channels.isChannelMuted(ch))}
 
 
+def op_get_plugin_params(a):
+    import plugins as _pl
+    ch = int(a["channel"]); offset = int(a.get("offset", 0))
+    limit = int(a.get("limit", 50))
+    try:
+        name = _pl.getPluginName(ch, -1)
+    except Exception:
+        name = None
+    try:
+        count = _pl.getParamCount(ch, -1)
+    except Exception:
+        count = 0
+    end = count if limit < 0 else min(count, offset + limit)
+    params = []
+    for idx in range(max(0, offset), end):
+        p = {"idx": idx}
+        try:
+            p["name"] = _pl.getParamName(idx, ch, -1)
+        except Exception:
+            p["name"] = None
+        try:
+            p["value"] = _pl.getParamValue(idx, ch, -1)
+        except Exception:
+            p["value"] = None
+        params.append(p)
+    return {"plugin": name, "count": count, "params": params}
+
+
+def op_set_plugin_param(a):
+    import plugins as _pl
+    ch = int(a["channel"]); sets = a["sets"]
+    done = []
+    for s in sets:
+        idx = int(s["idx"]); val = max(0.0, min(1.0, float(s["value"])))
+        try:
+            _pl.setParamValue(val, idx, ch, -1)
+            done.append({"idx": idx, "value_read": _pl.getParamValue(idx, ch, -1)})
+        except Exception as e:
+            done.append({"idx": idx, "error": "%s: %s" % (type(e).__name__, e)})
+    return {"set": done}
+
+
 def op_route_channel(a):
     ch = int(a["channel"]); track = int(a["track"])
     n = mixer.trackCount()
@@ -460,6 +502,12 @@ def op_plugin_mute(a):
     # confirmed signature: setPluginMuteState(track, slot, value)
     mixer.setPluginMuteState(t, slot, val)
     return {"track": t, "slot": slot, "muted": bool(val)}
+
+
+# Dispatch table, built from every op_* function defined above. Key = name minus the
+# "op_" prefix (e.g. op_get_project -> "get_project"). Dynamic so it can never desync.
+OPS = {name[3:]: fn for name, fn in dict(globals()).items()
+       if name.startswith("op_") and callable(fn)}
 
 
 

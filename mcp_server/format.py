@@ -103,3 +103,32 @@ def int_to_hex(value):
         return "#%06X" % (int(value) & 0xFFFFFF)
     except (ValueError, TypeError):
         return "#000000"
+
+
+def match_params(param_list, query):
+    """Case-insensitive substring match on each param's name.
+    Returns the matching items (each {idx,name,value,...}) ordered by idx."""
+    q = (query or "").strip().lower()
+    out = [p for p in param_list if q in (p.get("name") or "").lower()]
+    return sorted(out, key=lambda p: p.get("idx", 0))
+
+
+def resolve_param(param, param_list):
+    """Resolve a param selector to (idx, name).
+    int / numeric-string -> that index (validated against the list).
+    string -> unique name match. Raises ValueError on range / missing / ambiguous."""
+    if isinstance(param, int) or (isinstance(param, str)
+                                  and param.strip().lstrip("-").isdigit()):
+        idx = int(param)
+        by_idx = {p.get("idx"): p for p in param_list}
+        if idx in by_idx:
+            return idx, by_idx[idx].get("name")
+        n = len(param_list)
+        raise ValueError("param index %d out of range 0..%d" % (idx, n - 1))
+    matches = match_params(param_list, param)
+    if len(matches) == 1:
+        return matches[0]["idx"], matches[0]["name"]
+    if not matches:
+        raise ValueError("no param matches %r" % param)
+    raise ValueError("ambiguous %r matches: %s"
+                     % (param, [m["name"] for m in matches]))

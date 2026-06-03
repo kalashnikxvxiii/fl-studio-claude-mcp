@@ -98,3 +98,13 @@ Claude Code  ⇄  MCP server (Python, Linux)
   `fl_plugin_mix_level` (`setPluginMixLevel`, 0-1), `fl_plugin_mute`
   (`setPluginMuteState(track, slot, value)`). Loading presets/plugins remains out of
   reach via the clean controller API (see docs/proton-recon.md).
+- Plugin parameter control (2nd Proton breakthrough): `plugins.get/setParamValue` read and
+  write any loaded plugin's params (verified on Sytrus, 597 params, readable names, 0-1
+  scale). Tools: `fl_get_plugin_params` (paged), `fl_find_plugin_param` (search by name),
+  `fl_set_plugin_param` (by index or unique name), `fl_set_plugin_params` (multi). Name→idx
+  resolution is pure/tested (`match_params`/`resolve_param`). Signatures (slot -1 = the
+  channel's plugin): `getParamValue(idx, ch, -1)`, `setParamValue(value, idx, ch, -1)`,
+  `getParamName(idx, ch, -1)`, `getParamCount(ch, -1)`. Loading plugins/presets stays RED.
+- The device `OPS` dispatch table is built dynamically from every `op_*` function
+  (`{name[3:]: fn for name, fn in globals() if name.startswith("op_")}`) so adding an op
+  never requires editing a registration list (and can't desync).
