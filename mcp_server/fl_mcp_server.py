@@ -19,13 +19,15 @@ from mcp.server.fastmcp import FastMCP
 
 try:
     from .format import (readable_project, pitch_name, ticks_to_beats,
-                         build_import_payload, normalize_steps, color_to_int)
+                         build_import_payload, normalize_steps, color_to_int,
+                         match_params, resolve_param)
     from . import library as _lib
     from . import idgen as _idgen
     from . import preflight as _preflight
 except ImportError:                # when run as a plain script, not a package
     from format import (readable_project, pitch_name, ticks_to_beats,
-                        build_import_payload, normalize_steps, color_to_int)
+                        build_import_payload, normalize_steps, color_to_int,
+                        match_params, resolve_param)
     import library as _lib
     import idgen as _idgen
     import preflight as _preflight
@@ -342,6 +344,59 @@ def fl_plugin_mix_level(track: int, slot: int, level: float) -> dict:
 def fl_plugin_mute(track: int, slot: int, value: int = 1) -> dict:
     """Set a mixer-track plugin slot's mute state (1 = muted, 0 = unmuted)."""
     return _send("plugin_mute", {"track": track, "slot": slot, "value": value})
+
+
+@mcp.tool()
+def fl_get_plugin_params(channel: int, limit: int = 50, offset: int = 0) -> dict:
+    """Dump a loaded plugin's parameters (paged): [{idx,name,value(0-1)}]. With ~600
+    params on synths like Sytrus, use limit/offset or fl_find_plugin_param to search."""
+    return _send("get_plugin_params", {"channel": channel, "limit": limit,
+                                       "offset": offset})
+
+
+@mcp.tool()
+def fl_find_plugin_param(channel: int, query: str) -> dict:
+    """Find a plugin's params whose name matches `query` (case-insensitive). Returns the
+    matches with their indices so you can set them by index."""
+    full = _send("get_plugin_params", {"channel": channel, "limit": -1, "offset": 0})
+    matches = match_params(full.get("params", []), query)
+    return {"plugin": full.get("plugin"), "query": query, "matches": matches}
+
+
+@mcp.tool()
+def fl_set_plugin_param(channel: int, param, value: float) -> dict:
+    """Set one plugin parameter to `value` (0.0-1.0). `param` is an index (int) or a name
+    (str, must match exactly one param). Returns the value read back."""
+    full = _send("get_plugin_params", {"channel": channel, "limit": -1, "offset": 0})
+    try:
+        idx, name = resolve_param(param, full.get("params", []))
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
+    res = _send("set_plugin_param", {"channel": channel,
+                                     "sets": [{"idx": idx, "value": value}]})
+    r0 = (res.get("set") or [{}])[0]
+    return {"idx": idx, "name": name, "value_set": value,
+            "value_read": r0.get("value_read"), "error": r0.get("error")}
+
+
+@mcp.tool()
+def fl_set_plugin_params(channel: int, params: dict) -> dict:
+    """Set multiple plugin parameters at once. `params` maps each selector (index or name)
+    to a value 0.0-1.0, e.g. {"Main - Volume decay": 0.8, "5": 0.3}."""
+    full = _send("get_plugin_params", {"channel": channel, "limit": -1, "offset": 0})
+    plist = full.get("params", [])
+    sets, errors, resolved = [], [], []
+    for sel, val in params.items():
+        try:
+            idx, name = resolve_param(sel, plist)
+            sets.append({"idx": idx, "value": float(val)})
+            resolved.append((idx, name))
+        except (ValueError, TypeError) as e:
+            errors.append({"param": sel, "reason": str(e)})
+    res = _send("set_plugin_param", {"channel": channel, "sets": sets}) if sets else {"set": []}
+    read = {r["idx"]: r.get("value_read") for r in res.get("set", [])}
+    out = [{"idx": i, "name": n, "value_read": read.get(i)} for i, n in resolved]
+    return {"set": out, "errors": errors}
 
 
 @mcp.tool()
