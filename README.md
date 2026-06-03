@@ -1,5 +1,7 @@
 # fl-studio-claude-mcp
 
+![tests](https://github.com/kalashnikxvxiii/fl-studio-claude-mcp/actions/workflows/tests.yml/badge.svg)
+
 Control **FL Studio** from **Claude** through an MCP server — on **Linux**, with FL Studio
 running under **Wine**.
 
@@ -49,6 +51,7 @@ Then, in Claude: *"run fl_ping"* — you should get FL's version, tempo and play
 | Tool | Action |
 |---|---|
 | `fl_ping` | version + tempo + play state |
+| `fl_status` | pre-flight check (virmidi / FL / controller) with fix hints |
 | `fl_get_project` | full project read: context + channels (steps w/ pitch+velocity) + mixer |
 | `fl_read_notes` | read notes exported by the Export Notes piano-roll script |
 | `fl_write_notes(notes, mode, channel, pattern)` | write notes into the open clip (replace/merge); pre-selects channel/pattern |
