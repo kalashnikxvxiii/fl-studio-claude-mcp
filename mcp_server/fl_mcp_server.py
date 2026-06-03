@@ -21,10 +21,14 @@ try:
     from .format import (readable_project, pitch_name, ticks_to_beats,
                          build_import_payload, normalize_steps)
     from . import library as _lib
+    from . import idgen as _idgen
+    from . import preflight as _preflight
 except ImportError:                # when run as a plain script, not a package
     from format import (readable_project, pitch_name, ticks_to_beats,
                         build_import_payload, normalize_steps)
     import library as _lib
+    import idgen as _idgen
+    import preflight as _preflight
 
 USER = getpass.getuser()
 DEFAULT_DIR = os.path.expanduser(
@@ -57,8 +61,8 @@ _default_roots = os.pathsep.join([
 ])
 LIB_ROOTS = os.environ.get("FL_MCP_LIB_ROOTS", _default_roots).split(os.pathsep)
 LIB_CACHE = os.path.join(SHARED_DIR, "library_index.json")
-
-_next_id = int(time.time())  # unlikely to collide with a stale result file
+ID_COUNTER = os.path.join(SHARED_DIR, "id_counter.txt")
+FL_PROC = os.environ.get("FL_MCP_FL_PROC", "FL64.exe")
 
 mcp = FastMCP("fl-studio")
 
@@ -81,9 +85,7 @@ def _trigger_midi():
 
 def _send(op, args=None, timeout=4.0):
     """Send a command to FL and return its result (raises FLError on failure)."""
-    global _next_id
-    _next_id += 1
-    cid = _next_id
+    cid = _idgen.next_id(ID_COUNTER)
     with open(CMD_PATH, "w") as f:
         json.dump({"id": cid, "op": op, "args": args or {}}, f)
     _trigger_midi()
@@ -111,6 +113,19 @@ def _send(op, args=None, timeout=4.0):
 def fl_ping() -> dict:
     """Check the bridge: returns FL version, tempo, and play state."""
     return _send("ping")
+
+
+@mcp.tool()
+def fl_status() -> dict:
+    """Pre-flight check: is the bridge ready? Diagnoses snd-virmidi, the FL process,
+    and the controller, with a fix hint for whatever is missing. Call this first if
+    commands time out."""
+    def _ping():
+        try:
+            return _send("ping", timeout=1.5)
+        except FLError:
+            return None
+    return _preflight.check_environment(MIDI_DEV, FL_PROC, _ping)
 
 
 @mcp.tool()
