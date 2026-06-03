@@ -35,9 +35,14 @@ echo "==> Python venv + mcp SDK"
 python3 -m venv "$REPO/.venv"
 "$REPO/.venv/bin/pip" -q install -r "$REPO/mcp_server/requirements.txt"
 
-echo "==> snd-virmidi (needs sudo): persistent + load now"
-sudo install -m644 "$REPO/setup/snd-virmidi.conf" /etc/modules-load.d/snd-virmidi.conf
-sudo modprobe snd-virmidi || true
+echo "==> snd-virmidi persistence (needs sudo)"
+if sudo install -m644 "$REPO/setup/snd-virmidi.conf" /etc/modules-load.d/snd-virmidi.conf 2>/dev/null; then
+    echo "   installed /etc/modules-load.d/snd-virmidi.conf"
+else
+    echo "   (no sudo) to persist virmidi at boot, run:"
+    echo "   sudo install -m644 \"$REPO/setup/snd-virmidi.conf\" /etc/modules-load.d/snd-virmidi.conf"
+fi
+sudo modprobe snd-virmidi 2>/dev/null || echo "   load now manually: sudo modprobe snd-virmidi"
 
 echo "==> Registering MCP server with Claude Code"
 if command -v claude >/dev/null 2>&1; then
