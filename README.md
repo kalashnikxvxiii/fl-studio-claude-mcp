@@ -71,6 +71,10 @@ Then, in Claude: *"run fl_ping"* — you should get FL's version, tempo and play
 | `fl_route_channel(channel, track)` | route a channel to a mixer track (0=Master) |
 | `fl_track_send(from, to, level)` | enable a mixer track-to-track send |
 | `fl_plugin_mix_level(track, slot, level)` / `fl_plugin_mute(track, slot, value)` | mixer plugin slot level / mute |
+| `fl_get_plugin_params(channel, limit, offset)` | dump a plugin's params (paged) |
+| `fl_find_plugin_param(channel, query)` | search a plugin's params by name |
+| `fl_set_plugin_param(channel, param, value)` | set one param (by index or name), 0-1 |
+| `fl_set_plugin_params(channel, params)` | set multiple params at once |
 | `fl_pattern_rename/set_color/clone/new_empty/length` | pattern management |
 | `fl_marker_add` / `fl_markers_list` | playlist markers |
 | `fl_get_time` / `fl_select_region` / `fl_select_clear` | timeline position + selection |
